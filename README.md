@@ -1,15 +1,28 @@
-# model2vec-go
+<div align="center">
+    <h2>Fast State-of-the-Art Static Embeddings in Go</h2>
+</div>
 
-## Fast State-of-the-Art Static Embeddings in Go
+<div align="center">
+    <p>
+        <a href="#quickstart"><strong>Quickstart</strong></a> •
+        <a href="#features"><strong>Features</strong></a> •
+        <a href="#models"><strong>Models</strong></a> •
+        <!-- <a href="#performance"><strong>Performance</strong></a> • -->
+        <a href="#relation-to-python-model2vec"><strong>Relation to Python Model2Vec</strong></a>
+    </p>
+</div>
 
-[Quickstart](#quickstart) •
-[Features](#features) •
-[Models](#models) •
-[Relation to Python Model2Vec](#relation-to-python-model2vec)
-
-`model2vec-go` is a Go package providing an efficient implementation for inference with [Model2Vec](https://github.com/MinishLab/model2vec) static embedding models. It is a port of the official Rust implementation, [`model2vec-rs`](https://github.com/MinishLab/model2vec-rs). Model2Vec is a technique for creating compact and fast static embedding models from sentence transformers, achieving significant reductions in model size and inference speed. This package is pure Go — no CGO, no native libraries, no Rust toolchain required.
+`model2vec-go` is a Go package providing an efficient implementation for inference with [Model2Vec](https://github.com/MinishLab/model2vec) static embedding models. It is a port of the official Rust implementation, [`model2vec-rs`](https://github.com/MinishLab/model2vec-rs). Model2Vec is a technique for creating compact and fast static embedding models from sentence transformers, achieving significant reductions in model size and inference speed.
 
 ## Quickstart
+You can utilize `model2vec-rs` in two ways:
+
+1.  **As a library** in your Go projects 
+2.  **TODO: As a standalone Command-Line Interface (CLI) tool** for quick terminal-based inferencing
+
+---
+
+### 1. Using `model2vec-rs` as a Library
 
 **a. Add `model2vec-go` as a dependency:**
 
