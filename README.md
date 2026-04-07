@@ -5,6 +5,7 @@
 <div align="center">
     <p>
         <a href="#quickstart"><strong>Quickstart</strong></a> •
+        <a href="#2-using-the-model2vec-go-cli"><strong>CLI</strong></a> •
         <a href="#features"><strong>Features</strong></a> •
         <a href="#models"><strong>Models</strong></a> •
         <!-- <a href="#performance"><strong>Performance</strong></a> • -->
@@ -15,14 +16,14 @@
 `model2vec-go` is a Go package providing an efficient implementation for inference with [Model2Vec](https://github.com/MinishLab/model2vec) static embedding models. It is a port of the official Rust implementation, [`model2vec-rs`](https://github.com/MinishLab/model2vec-rs). Model2Vec is a technique for creating compact and fast static embedding models from sentence transformers, achieving significant reductions in model size and inference speed.
 
 ## Quickstart
-You can utilize `model2vec-rs` in two ways:
+You can utilize `model2vec-go` in two ways:
 
-1.  **As a library** in your Go projects 
-2.  **TODO: As a standalone Command-Line Interface (CLI) tool** for quick terminal-based inferencing
+1.  **As a library** in your Go projects
+2.  **As a standalone Command-Line Interface (CLI) tool** for quick terminal-based inferencing
 
 ---
 
-### 1. Using `model2vec-rs` as a Library
+### 1. Using `model2vec-go` as a Library
 
 **a. Add `model2vec-go` as a dependency:**
 
@@ -75,6 +76,49 @@ func main() {
     )
     fmt.Printf("Generated %d custom embeddings.\n", len(customEmbeddings))
 }
+```
+
+### 2. Using the `model2vec-go` CLI
+
+**a. Install the CLI tool:**
+
+This command compiles and installs the `model2vec` executable to Go's binary directory (`$GOPATH/bin`, or `$HOME/go/bin` by default).
+
+```bash
+go install github.com/ammar-ahmed22/model2vec-go/cmd/model2vec@latest
+```
+
+Ensure `$HOME/go/bin` (or your `GOBIN`) is in your system's `PATH` so you can run `model2vec` from any directory.
+
+**b. Generate embeddings via CLI:**
+
+*   **Encode a single sentence:**
+    ```shell
+    model2vec encode-single "Hello world" "minishlab/potion-base-8M"
+    ```
+    The embedding is printed to stdout in JSON format. The first invocation downloads and caches the model under `~/.cache/huggingface/hub/`; subsequent runs use the cached files.
+
+*   **Encode multiple lines from a file and save to an output file:**
+    ```shell
+    printf "This is the first sentence.\nThis is another sentence.\n" > my_texts.txt
+    model2vec encode my_texts.txt "minishlab/potion-base-8M" --output embeddings_output.json
+    ```
+
+    If the first positional argument to `encode` is not an existing file, it is treated as a single literal sentence instead. Both subcommands also accept a local model directory in place of a Hugging Face repo ID.
+
+**c. (Alternative for Developers) Running the CLI from a cloned repository:**
+
+```shell
+# Clone and navigate to the repository directory
+git clone https://github.com/ammar-ahmed22/model2vec-go.git
+cd model2vec-go
+
+# Run directly with `go run`:
+go run ./cmd/model2vec encode-single "Hello world" "minishlab/potion-base-8M"
+
+# Or build the executable first and run it:
+go build -o model2vec ./cmd/model2vec
+./model2vec encode-single "Hello world" "minishlab/potion-base-8M"
 ```
 
 ## Features

@@ -1,15 +1,13 @@
-// model2vec is the command-line interface for model2vec-go.
-// CLI support is planned for a future release.
+// Command model2vec is the command-line entry point for the model2vec-go
+// library. See root.go for the cobra command tree and the individual
+// encode*.go files for each subcommand's implementation.
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "os"
 
 func main() {
-	fmt.Fprintln(os.Stderr, "model2vec CLI is not yet implemented.")
-	fmt.Fprintln(os.Stderr, "Use the library directly:")
-	fmt.Fprintln(os.Stderr, `  import model2vec "github.com/ammar-ahmed22/model2vec-go"`)
-	os.Exit(1)
+	if err := rootCmd.Execute(); err != nil {
+		// cobra has already printed the error to stderr.
+		os.Exit(1)
+	}
 }
