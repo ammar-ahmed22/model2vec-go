@@ -46,11 +46,16 @@ type StaticModel struct {
 	unkTokenID     *int // nil if the tokenizer declares no unk_token
 }
 
-// tokenizerJSON is used to parse tokenizer.json for metadata only (vocab + unk_token).
+// tokenizerJSON is used to parse tokenizer.json for metadata only.
+// Supports two vocab schemas:
+//   - WordPiece/BPE: model.vocab is an object {token: id}, model.unk_token is a string.
+//   - Unigram: model.vocab is an array [[token, score], ...] where the index is
+//     the token ID, and model.unk_id is the integer ID of the unk token.
 type tokenizerJSON struct {
 	Model struct {
-		Vocab    map[string]int `json:"vocab"`
-		UnkToken *string        `json:"unk_token"`
+		Vocab    json.RawMessage `json:"vocab"`
+		UnkToken *string         `json:"unk_token"`
+		UnkID    *int            `json:"unk_id"`
 	} `json:"model"`
 }
 
@@ -281,23 +286,55 @@ func computeTokenizerMetadata(tokBytes []byte) (medianLen int, unkID *int, err e
 		return 0, nil, fmt.Errorf("parsing tokenizer.json: %w", err)
 	}
 
-	// Compute median token string length from the vocab.
-	lens := make([]int, 0, len(tj.Model.Vocab))
-	for tok := range tj.Model.Vocab {
-		lens = append(lens, len(tok))
-	}
-	sort.Ints(lens)
-	if len(lens) == 0 {
-		medianLen = 1
-	} else {
-		medianLen = lens[len(lens)/2]
+	// vocab may be either an object (WordPiece/BPE) or an array (Unigram).
+	var vocabMap map[string]int
+	var tokenLens []int
+	if len(tj.Model.Vocab) > 0 {
+		switch tj.Model.Vocab[0] {
+		case '{':
+			if err = json.Unmarshal(tj.Model.Vocab, &vocabMap); err != nil {
+				return 0, nil, fmt.Errorf("parsing vocab object: %w", err)
+			}
+			tokenLens = make([]int, 0, len(vocabMap))
+			for tok := range vocabMap {
+				tokenLens = append(tokenLens, len(tok))
+			}
+		case '[':
+			// Unigram: [[token, score], ...]
+			var entries []json.RawMessage
+			if err = json.Unmarshal(tj.Model.Vocab, &entries); err != nil {
+				return 0, nil, fmt.Errorf("parsing vocab array: %w", err)
+			}
+			tokenLens = make([]int, 0, len(entries))
+			for _, e := range entries {
+				var pair []json.RawMessage
+				if err = json.Unmarshal(e, &pair); err != nil || len(pair) == 0 {
+					continue
+				}
+				var tok string
+				if err = json.Unmarshal(pair[0], &tok); err != nil {
+					continue
+				}
+				tokenLens = append(tokenLens, len(tok))
+			}
+		}
 	}
 
-	// Look up the unk_token ID in the vocab (if declared).
-	if tj.Model.UnkToken != nil && *tj.Model.UnkToken != "" {
-		if id, ok := tj.Model.Vocab[*tj.Model.UnkToken]; ok {
+	sort.Ints(tokenLens)
+	if len(tokenLens) == 0 {
+		medianLen = 1
+	} else {
+		medianLen = tokenLens[len(tokenLens)/2]
+	}
+
+	// Resolve unk ID from either unk_token (lookup in object vocab) or unk_id (Unigram).
+	if tj.Model.UnkToken != nil && *tj.Model.UnkToken != "" && vocabMap != nil {
+		if id, ok := vocabMap[*tj.Model.UnkToken]; ok {
 			unkID = &id
 		}
+	} else if tj.Model.UnkID != nil {
+		id := *tj.Model.UnkID
+		unkID = &id
 	}
 
 	return medianLen, unkID, nil
