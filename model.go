@@ -16,6 +16,7 @@
 package model2vec
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -71,15 +72,36 @@ func FromPretrained(repoOrPath string, opts ...Option) (*StaticModel, error) {
 		return nil, fmt.Errorf("model2vec: resolving model files: %w", err)
 	}
 
-	// --- config.json: read the normalize flag ---
 	cfgBytes, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return nil, fmt.Errorf("model2vec: reading config.json: %w", err)
 	}
+	mdlBytes, err := os.ReadFile(mdlPath)
+	if err != nil {
+		return nil, fmt.Errorf("model2vec: reading model.safetensors: %w", err)
+	}
+	tokBytes, err := os.ReadFile(tokPath)
+	if err != nil {
+		return nil, fmt.Errorf("model2vec: reading tokenizer.json: %w", err)
+	}
+
+	return FromBytes(tokBytes, mdlBytes, cfgBytes, opts...)
+}
+
+// FromBytes loads a Model2Vec model from in-memory byte slices for the
+// tokenizer.json, model.safetensors, and config.json files. It performs no
+// filesystem or network access, mirroring the Rust library's from_bytes().
+func FromBytes(tokenizerBytes, modelBytes, configBytes []byte, opts ...Option) (*StaticModel, error) {
+	o := &Options{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	// --- config.json: read the normalize flag ---
 	var cfg struct {
 		Normalize *bool `json:"normalize"`
 	}
-	if err = json.Unmarshal(cfgBytes, &cfg); err != nil {
+	if err := json.Unmarshal(configBytes, &cfg); err != nil {
 		return nil, fmt.Errorf("model2vec: parsing config.json: %w", err)
 	}
 	normalize := true // default when absent
@@ -91,11 +113,7 @@ func FromPretrained(repoOrPath string, opts ...Option) (*StaticModel, error) {
 	}
 
 	// --- model.safetensors: load embeddings (and optional weights / mapping) ---
-	mdlBytes, err := os.ReadFile(mdlPath)
-	if err != nil {
-		return nil, fmt.Errorf("model2vec: reading model.safetensors: %w", err)
-	}
-	sf, err := parseSafetensors(mdlBytes)
+	sf, err := parseSafetensors(modelBytes)
 	if err != nil {
 		return nil, fmt.Errorf("model2vec: parsing model.safetensors: %w", err)
 	}
@@ -153,16 +171,12 @@ func FromPretrained(repoOrPath string, opts ...Option) (*StaticModel, error) {
 	}
 
 	// --- tokenizer.json: load tokenizer and extract metadata ---
-	tk, err := pretrained.FromFile(tokPath)
+	tk, err := pretrained.FromReader(bytes.NewReader(tokenizerBytes))
 	if err != nil {
 		return nil, fmt.Errorf("model2vec: loading tokenizer: %w", err)
 	}
 
-	tokBytes, err := os.ReadFile(tokPath)
-	if err != nil {
-		return nil, fmt.Errorf("model2vec: reading tokenizer.json for metadata: %w", err)
-	}
-	medianLen, unkID, err := computeTokenizerMetadata(tokBytes)
+	medianLen, unkID, err := computeTokenizerMetadata(tokenizerBytes)
 	if err != nil {
 		return nil, fmt.Errorf("model2vec: computing tokenizer metadata: %w", err)
 	}
